@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <style>
+    body { width: 340px; padding: 14px; font-family: Arial, sans-serif; font-size: 13px; color: #333; }
+    button.hoved { width: 100%; padding: 10px; background: #0460a7; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 13px; margin-bottom: 10px; }
+    button.hoved:hover { background: #034f8a; }
+    #status { margin-bottom: 10px; font-size: 12px; color: #555; text-align: center; min-height: 16px; }
+    .skillelinje { border: none; border-top: 1px solid #ddd; margin: 10px 0; }
+    .seksjon-tittel { font-size: 11px; color: #888; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px; }
+    .kurs-rad { display: flex; align-items: center; gap: 6px; margin-bottom: 6px; }
+    .kurs-namn { flex: 1; font-size: 12px; color: #333; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .kurs-slett { background: none; border: none; color: #aaa; cursor: pointer; font-size: 14px; padding: 0 4px; line-height: 1; }
+    .kurs-slett:hover { color: #cc0000; }
+    .legg-til-rad { display: flex; gap: 6px; margin-top: 8px; }
+    input.url-input { flex: 1; padding: 6px 8px; border: 1px solid #ccc; border-radius: 6px; font-size: 12px; }
+    input.url-input:focus { outline: none; border-color: #0460a7; }
+    button.liten { padding: 6px 10px; background: #0460a7; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 12px; white-space: nowrap; }
+    button.liten:hover { background: #034f8a; }
+    #legg-til-status { font-size: 11px; color: #888; margin-top: 4px; min-height: 14px; }
+    .ingen-kurs { font-size: 12px; color: #aaa; font-style: italic; margin-bottom: 6px; }
+    .spinner { display: inline-block; width: 10px; height: 10px; border: 2px solid #ccc; border-top-color: #0460a7; border-radius: 50%; animation: spin 0.6s linear infinite; margin-right: 4px; vertical-align: middle; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+  </style>
+</head>
+<body>
+  <button class="hoved" id="btn">📋 Sett inn mal</button>
+  <div id="status"></div>
+  <hr class="skillelinje">
+  <div class="seksjon-tittel">Lagra kurs</div>
+  <div id="kursliste"></div>
+  <div class="legg-til-rad">
+    <input class="url-input" id="url" type="text" placeholder="Lim inn URL til malside…">
+    <button class="liten" id="lagre">+ Legg til</button>
+  </div>
+  <div id="legg-til-status"></div>
+  <script src="popup.js"></script>
+</body>
+</html>
