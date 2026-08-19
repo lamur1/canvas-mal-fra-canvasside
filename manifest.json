@@ -14,7 +14,7 @@
       "description": "Set inn mal frå Canvasside"
     },
     "sett-inn-mal-nynorsk": {
-      "suggested_key": { "default": "Ctrl+Shift+Y", "mac": "Command+Shift+Y" },
+      "suggested_key": { "default": "Ctrl+Shift+Y", "mac": "Alt+Shift+Y" },
       "description": "Set inn mal omsett til nynorsk"
     }
   },
