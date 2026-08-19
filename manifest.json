@@ -4,13 +4,17 @@
   "version": "2.0",
   "description": "Hentar mal frå malside i Canvas og set inn i Speed Grader. Støttar fleire kurs.",
   "permissions": ["activeTab", "scripting", "commands", "storage", "tabs"],
-  "host_permissions": ["https://*.instructure.com/*"],
+  "host_permissions": ["https://*.instructure.com/*", "https://apertium.org/*"],
   "background": { "service_worker": "background.js" },
   "action": { "default_popup": "popup.html", "default_icon": { "16": "icon16.png", "48": "icon48.png" } },
   "commands": {
     "sett-inn-mal": {
       "suggested_key": { "default": "Ctrl+Shift+M", "mac": "Command+Shift+M" },
       "description": "Set inn mal frå Canvasside"
+    },
+    "sett-inn-mal-nynorsk": {
+      "suggested_key": { "default": "Ctrl+Shift+Y", "mac": "Alt+Shift+Y" },
+      "description": "Set inn mal omsett til nynorsk"
     }
   },
   "icons": { "16": "icon16.png", "48": "icon48.png" }

@@ -6,6 +6,10 @@
     body { width: 340px; padding: 14px; font-family: Arial, sans-serif; font-size: 13px; color: #333; }
     button.hoved { width: 100%; padding: 10px; background: #0460a7; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 13px; margin-bottom: 10px; }
     button.hoved:hover { background: #034f8a; }
+    button.hoved.nynorsk { background: #1a7a4a; margin-top: -4px; margin-bottom: 6px; }
+    button.hoved.nynorsk:hover { background: #14603a; }
+    .personvern-note { font-size: 11px; line-height: 1.4; color: #4a5a52; background: #eef6f1; border: 1px solid #cfe6da; border-radius: 6px; padding: 7px 9px; margin-bottom: 10px; }
+    .personvern-note strong { color: #14603a; }
     #status { margin-bottom: 10px; font-size: 12px; color: #555; text-align: center; min-height: 16px; }
     .skillelinje { border: none; border-top: 1px solid #ddd; margin: 10px 0; }
     .seksjon-tittel { font-size: 11px; color: #888; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px; }
@@ -26,6 +30,13 @@
 </head>
 <body>
   <button class="hoved" id="btn">📋 Sett inn mal</button>
+  <button class="hoved nynorsk" id="btn-nynorsk">🈁 Set inn mal (nynorsk)</button>
+  <div class="personvern-note">
+    🔒 Nynorsk-omsettinga sender <strong>malteksten</strong> til omsettingstenesta
+    Apertium (apertium.org). Elevnamnet blir aldri sendt – det blir sett inn lokalt
+    <em>etter</em> omsettinga.<br>
+    <strong>Hugs:</strong> malane skal ikkje innehalde personleg identifiserbar informasjon.
+  </div>
   <div id="status"></div>
   <hr class="skillelinje">
   <div class="seksjon-tittel">Lagra kurs</div>

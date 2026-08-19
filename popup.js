@@ -97,3 +97,13 @@ document.getElementById('btn').addEventListener('click', async () => {
   statusEl.style.color = result?.ok ? 'green' : 'red';
   statusEl.textContent = result?.ok ? '✓ Mal sett inn!' : ('⚠ ' + (result?.feil || 'Ukjent feil'));
 });
+
+// Set inn mal (omsett til nynorsk via Apertium)
+document.getElementById('btn-nynorsk').addEventListener('click', async () => {
+  const statusEl = document.getElementById('status');
+  statusEl.innerHTML = '<span class="spinner"></span>Hentar mal og omset til nynorsk…';
+  statusEl.style.color = '#555';
+  const result = await chrome.runtime.sendMessage({ action: 'sett-inn-mal-nynorsk' });
+  statusEl.style.color = result?.ok ? 'green' : 'red';
+  statusEl.textContent = result?.ok ? '✓ Nynorsk-mal sett inn!' : ('⚠ ' + (result?.feil || 'Ukjent feil'));
+});

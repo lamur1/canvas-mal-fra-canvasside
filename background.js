@@ -1,12 +1,17 @@
 let innsettingAktiv = false;
 
 chrome.commands.onCommand.addListener(async (command) => {
-  if (command === 'sett-inn-mal') await settInnMal();
+  if (command === 'sett-inn-mal') await settInnMal(false);
+  if (command === 'sett-inn-mal-nynorsk') await settInnMal(true);
 });
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.action === 'sett-inn-mal') {
-    settInnMal().then(sendResponse);
+    settInnMal(false).then(sendResponse);
+    return true;
+  }
+  if (message.action === 'sett-inn-mal-nynorsk') {
+    settInnMal(true).then(sendResponse);
     return true;
   }
   if (message.action === 'hent-kursnamn') {
@@ -48,7 +53,45 @@ async function hentKursnamn(kursId) {
   }
 }
 
-async function settInnMal() {
+// ─── OVERSETT TIL NYNORSK (Apertium – gratis, ingen nøkkel) ──────────────────
+// Apertium med format=html omset teksten, men held HTML-taggane. Fetch skjer
+// frå service-workaren (host_permissions), så CORS er ikkje eit problem.
+async function oversettMedApertium(html) {
+  // «fornavn» er bokmål (nynorsk: «fornamn»), så Apertium ville omsett sjølve
+  // plasshaldaren. Vern han med ein nøytral markør og gjenopprett etterpå.
+  const MARKOR = 'PLACEHOLDERNAME';
+  const beskytta = html.replace(/@fornavn/gi, MARKOR);
+
+  try {
+    const body = new URLSearchParams({
+      langpair: 'nob|nno_e', // e-infinitiv + «vi» (mindre traust enn standard nob|nno)
+      q: beskytta,
+      format: 'html',
+      markUnknown: 'no'
+    });
+    const res = await fetch('https://apertium.org/apy/translate', {
+      method: 'POST',
+      headers: { 'content-type': 'application/x-www-form-urlencoded' },
+      body: body.toString()
+    });
+
+    if (!res.ok) {
+      return { feil: `Apertium svarte HTTP ${res.status}. Prøv igjen om litt.` };
+    }
+    const data = await res.json();
+    let ut = data?.responseData?.translatedText;
+    if (typeof ut !== 'string' || !ut.trim()) {
+      return { feil: 'Tomt eller uventa svar frå Apertium' };
+    }
+    // Gjenopprett plasshaldaren (markøren er ukjend for Apertium og passerer uendra)
+    ut = ut.replace(new RegExp(MARKOR, 'gi'), '@fornavn');
+    return { tekst: ut };
+  } catch (e) {
+    return { feil: 'Apertium feila: ' + e.message };
+  }
+}
+
+async function settInnMal(oversett = false) {
   if (innsettingAktiv) return { feil: 'Innsetting pågår allereie' };
   innsettingAktiv = true;
 
@@ -119,6 +162,14 @@ async function settInnMal() {
 
     const malRes = malResultat?.[0]?.result;
     if (!malRes?.mal) return { feil: malRes?.feil || 'Fann ingen mal' };
+
+    // Oversett til nynorsk om ønska (før @fornavn blir bytt ut)
+    let malHtml = malRes.mal;
+    if (oversett) {
+      const oms = await oversettMedApertium(malHtml);
+      if (oms.feil) return { feil: oms.feil };
+      malHtml = oms.tekst;
+    }
 
     // Sett inn i editor
     const innSettingResultat = await chrome.scripting.executeScript({
@@ -226,7 +277,7 @@ async function settInnMal() {
           if (finnSendKnapp()) { sendKnappKlar = true; sjekkOgSettInn(); }
         });
       },
-      args: [malRes.mal, info.fornavn]
+      args: [malHtml, info.fornavn]
     });
 
     const innSettingRes = innSettingResultat?.[0]?.result;
