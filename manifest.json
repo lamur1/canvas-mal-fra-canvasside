@@ -1,8 +1,9 @@
 {
   "manifest_version": 3,
   "name": "Canvas – Sett inn mal",
-  "version": "2.0",
-  "description": "Hentar mal frå malside i Canvas og set inn i Speed Grader. Støttar fleire kurs.",
+  "version": "2.1",
+  "version_name": "2.1 – nynorsk-omsetting (lasta til GitHub 19.08.2026)",
+  "description": "Hentar mal frå malside i Canvas og set inn i Speed Grader. Støttar fleire kurs, og kan omsetje malen til nynorsk (via Apertium).",
   "permissions": ["activeTab", "scripting", "commands", "storage", "tabs"],
   "host_permissions": ["https://*.instructure.com/*", "https://apertium.org/*"],
   "background": { "service_worker": "background.js" },
@@ -13,7 +14,7 @@
       "description": "Set inn mal frå Canvasside"
     },
     "sett-inn-mal-nynorsk": {
-      "suggested_key": { "default": "Ctrl+Shift+Y", "mac": "Alt+Shift+Y" },
+      "suggested_key": { "default": "Ctrl+Shift+Y", "mac": "Command+Shift+Y" },
       "description": "Set inn mal omsett til nynorsk"
     }
   },
