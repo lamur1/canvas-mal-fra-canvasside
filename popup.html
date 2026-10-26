@@ -10,11 +10,36 @@
     button.hoved.nynorsk:hover { background: #14603a; }
     .personvern-note { font-size: 11px; line-height: 1.4; color: #4a5a52; background: #eef6f1; border: 1px solid #cfe6da; border-radius: 6px; padding: 7px 9px; margin-bottom: 10px; }
     .personvern-note strong { color: #14603a; }
+    details.rettleiing { font-size: 12px; line-height: 1.45; margin-bottom: 8px; }
+    details.rettleiing summary { cursor: pointer; color: #0460a7; font-weight: bold; margin-bottom: 4px; }
+    details.rettleiing ol { margin: 4px 0 4px 18px; padding: 0; }
+    details.rettleiing li { margin-bottom: 4px; }
+    details.rettleiing code { background: #f1f3f5; padding: 0 3px; border-radius: 3px; font-size: 11px; }
+    .ledetekst-topp { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
+    textarea.ledetekst, textarea.svar { width: 100%; box-sizing: border-box; padding: 6px 8px; border: 1px solid #ccc; border-radius: 6px; font: 12px/1.4 Arial, sans-serif; resize: vertical; }
+    textarea.ledetekst { min-height: 84px; }
+    textarea.svar { min-height: 70px; }
+    textarea.ledetekst:focus, textarea.svar:focus { outline: none; border-color: #1a7a4a; }
+    button.lenkeknapp { background: none; border: none; color: #0460a7; cursor: pointer; font-size: 11px; padding: 0; }
+    button.lenkeknapp:hover { text-decoration: underline; }
+    .hint { font-size: 11px; color: #888; margin-top: 3px; min-height: 14px; }
+    #reserve { display: none; background: #fff7e6; border: 1px solid #f0c36d; border-radius: 6px; padding: 8px 9px; margin-bottom: 10px; font-size: 12px; line-height: 1.4; }
+    #reserve .reserve-tittel { font-weight: bold; color: #8a5a00; margin-bottom: 4px; }
+    #reserve button.liten { margin: 4px 0; }
+    #reserve .reserve-knappar { display: flex; gap: 6px; align-items: center; }
+    #bekreft { display: none; background: #fff7e6; border: 2px solid #f0a020; border-radius: 6px; padding: 10px 11px; margin-bottom: 10px; font-size: 12px; line-height: 1.45; }
+    #bekreft-tekst { white-space: pre-line; margin-bottom: 8px; }
+    #bekreft .knappar { display: flex; gap: 8px; }
+    #bekreft button.avbryt { padding: 6px 10px; background: #fff; color: #333; border: 1px solid #bbb; border-radius: 6px; cursor: pointer; font-size: 12px; }
     #status { margin-bottom: 10px; font-size: 12px; color: #555; text-align: center; min-height: 16px; }
     .skillelinje { border: none; border-top: 1px solid #ddd; margin: 10px 0; }
     .seksjon-tittel { font-size: 11px; color: #888; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px; }
-    .kurs-rad { display: flex; align-items: center; gap: 6px; margin-bottom: 6px; }
-    .kurs-namn { flex: 1; font-size: 12px; color: #333; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .kurs-rad { display: flex; align-items: flex-start; gap: 6px; margin-bottom: 8px; }
+    .kurs-tekst { flex: 1; min-width: 0; }
+    .kurs-namn { font-size: 12px; color: #333; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .kurs-url { display: block; font-size: 11px; color: #0460a7; word-break: break-all; user-select: text; margin-top: 2px; }
+    .kurs-kopier { background: none; border: 1px solid #ccc; border-radius: 4px; cursor: pointer; font-size: 12px; padding: 1px 5px; line-height: 1.3; }
+    .kurs-kopier:hover { border-color: #0460a7; background: #f0f7fb; }
     .kurs-slett { background: none; border: none; color: #aaa; cursor: pointer; font-size: 14px; padding: 0 4px; line-height: 1; }
     .kurs-slett:hover { color: #cc0000; }
     .legg-til-rad { display: flex; gap: 6px; margin-top: 8px; }
@@ -30,22 +55,127 @@
 </head>
 <body>
   <button class="hoved" id="btn">📋 Sett inn mal</button>
-  <button class="hoved nynorsk" id="btn-nynorsk">🈁 Set inn mal (nynorsk)</button>
-  <div class="personvern-note">
-    🔒 Nynorsk-omsettinga sender <strong>malteksten</strong> til omsettingstenesta
-    Apertium (apertium.org). Elevnamnet blir aldri sendt – det blir sett inn lokalt
-    <em>etter</em> omsettinga.<br>
-    <strong>Hugs:</strong> malane skal ikkje innehalde personleg identifiserbar informasjon.
-  </div>
+  <button class="hoved nynorsk" id="btn-nynorsk">🈁 Sett inn mal på nynorsk</button>
   <div id="status"></div>
+
+  <div id="reserve">
+    <div class="reserve-tittel">⚠ Fullfør nynorsk-oversettelsen for hånd</div>
+    <div id="reserve-grunn"></div>
+    <ol style="margin:4px 0 4px 18px;padding:0">
+      <li>Kopier teksten, lim den inn i Copilot-fanen (⌘V) og trykk Send.<br>
+        <button class="liten" id="reserve-kopier">📋 Kopier tekst til Copilot</button></li>
+      <li>Klikk «Kopier» under svaret i Copilot, gå tilbake til SpeedGrader og åpne utvidelsen.</li>
+      <li>Lim inn hele svaret her (linjene med [1], [2] …) og sett det inn:</li>
+    </ol>
+    <textarea class="svar" id="reserve-svar" placeholder="[1] Hei, @fornavn! …"></textarea>
+    <div class="reserve-knappar">
+      <button class="liten" id="reserve-set-inn">Sett inn i SpeedGrader</button>
+      <button class="lenkeknapp" id="reserve-avbryt">Avbryt</button>
+    </div>
+    <div class="hint" id="reserve-status"></div>
+  </div>
+
+  <div class="personvern-note">
+    🔒 Når nynorsken lages, sendes bare <strong>malteksten</strong> til Microsoft 365 Copilot med
+    skolekontoen din. Elevnavnet sendes aldri – det settes inn lokalt
+    <em>etter</em> oversettelsen.<br>
+    <strong>Husk:</strong> malene skal ikke inneholde personidentifiserende opplysninger.
+  </div>
+
   <hr class="skillelinje">
-  <div class="seksjon-tittel">Lagra kurs</div>
+  <div class="seksjon-tittel">Nynorsk</div>
+  <details class="rettleiing">
+    <summary>Slik bruker du nynorsk-knappen</summary>
+    <ol>
+      <li><strong>Raskest: ha nynorsken ferdig på malsiden.</strong> Malsiden har kolonnene
+        Tittel innlevering | Bokmål | Nynorsk. Nynorsk-knappen setter da inn malen med en gang,
+        uten Copilot. Første gang legger du til kolonnen «Nynorsk» med 🔄 ved faget under
+        («Lagrede fag»).
+        <br>· <strong>Bokmål er fasit – og nynorsken følger med av seg selv.</strong> Når du lagrer
+        malsiden (eller bare åpner den), finner utvidelsen malene der bokmålet er endret, oversetter
+        bare dem i bakgrunnen og oppdaterer kolonnen «Nynorsk». Et varsel midt på skjermen viser hva
+        som skjer, og siden lastes på nytt når nynorsken er klar.
+        <br>· I SpeedGrader: er nynorsken for en mal utdatert eller mangler, kommer varselet
+        <em>før</em> innsettingen – utvidelsen oppdaterer malsiden først og setter inn derfra.
+        <br>· Nynorsk du skriver eller retter <em>selv</em> i kolonnen, blir ikke overskrevet –
+        før du endrer bokmålsteksten i samme rad.
+        <br>· Den automatiske oppdateringen gjelder bare malsider som allerede har kolonnen «Nynorsk».</li>
+      <li><strong>Ny i et fag?</strong> Åpne faget i Canvas og trykk «📄 Lag malside fra modulene i dette
+        faget» (under «Lagrede fag»). Utvidelsen lager en upublisert malside med navnet ditt, alle
+        innleveringene i modulene (titlene er lenker til oppgavene) og kolonnene Bokmål og Nynorsk.
+        Trykk samme knapp når modulene endres underveis: nye innleveringer legges til på riktig plass,
+        oppgaver som har fått nytt navn, får oppdatert tittel, og oppgaver som er fjernet, merkes ⚠
+        (raden slettes ikke). Malteksten følger oppgaven, ikke navnet.</li>
+      <li><strong>Ha Copilot åpen i en egen fane</strong> mens du retter og når du redigerer malsiden,
+        innlogget med skolekontoen (samme som Office 365):
+        <a href="https://m365.cloud.microsoft/chat" target="_blank">m365.cloud.microsoft/chat</a>.
+        Står det «Kommersiell databeskyttelse» med et grønt skjold, er du på riktig sted.
+        Har du ingen Copilot-fane, åpner utvidelsen en festet fane selv.</li>
+      <li><strong>Utvidelsen bruker én fast chat i Copilot</strong> til alle oversettelsene. Den heter
+        «Oversett teksten under fra bokmål …» i chatlisten i Copilot, og der kan du bla opp og se alle
+        oversettelsene. En ny fast chat startes automatisk
+        <br>· etter 30 oversettelser (lange chatter blir trege),
+        <br>· når du endrer ledeteksten (så de gamle svarene ikke påvirker de nye),
+        <br>· når du trykker «Start ny oversettelseschat» under, eller hvis chatten er slettet.</li>
+      <li><strong>Bruk Copilot-fanen bare til utvidelsen</strong> mens du jobber med malene. Trenger du Copilot til
+        noe annet, åpner du en ny fane – men la oversettelsesfanen stå i den faste chatten.</li>
+      <li><strong>Trykk nynorsk-knappen</strong> (eller snarveien/Stream Deck) i SpeedGrader.
+        Står nynorsken ferdig på malsiden, settes den inn med en gang – uten Copilot.
+        Mangler den eller er den utdatert, oversetter utvidelsen først med Copilot-fanen liggende bak,
+        oppdaterer malsiden og setter så inn – du blir i SpeedGrader hele tiden. Skulle Chrome holde
+        igjen fanen bak, vises den et øyeblikk og jobben fullføres der.</li>
+      <li><strong>Ledeteksten under bestemmer hvilken nynorsk du får.</strong> Skriv den slik du ville
+        forklart det for en kollega. Eksempler på tillegg:
+        <br>· <em>Bruk a-infinitiv: skriva, halda, læra.</em> · <em>Bruk «eg» og «me».</em>
+        <br>· <em>Skriv «kvifor», ikke «korfor».</em> · <em>Bruk «veke», ikke «uke».</em>
+        <br>· <em>Ikke oversett navnet Ukelogg.</em> · <em>Hold setningene korte.</em>
+        <br>En endret ledetekst gjelder nye oversettelser. Nynorsk som allerede står på malsiden,
+        oversettes ikke på nytt – rett den direkte i kolonnen «Nynorsk».</li>
+      <li><strong>Bare teksten sendes til Copilot.</strong> Bilder, film, farger, lenker og tabeller
+        står urørt – nynorsk-malen ser ut akkurat som bokmålsmalen. Reglene om dette og om
+        <code>@fornavn</code> legger utvidelsen til selv. Blir noe endret, stopper utvidelsen i stedet for
+        å sette inn feil tekst.</li>
+      <li>Les gjennom før du sender kommentaren: Copilot kan av og til velge et annet ord enn du ville.</li>
+      <li><strong>Hurtigtaster</strong> (også for Stream Deck): bokmål ⌘⇧M, nynorsk ⌥⇧Y
+        (Windows: Ctrl+Shift+M og Ctrl+Shift+Y). Du kan endre dem i
+        <code>chrome://extensions/shortcuts</code>.</li>
+      <li><strong>Regel: rediger malsiden på samme maskin og i samme nettleser som utvidelsen er
+        installert i</strong>, innlogget i Copilot. Da følger nynorsken alltid med. Endrer du bokmål
+        andre steder (annen nettleser, nettbrett), oppdateres nynorsken neste gang du åpner malsiden
+        eller setter inn malen i SpeedGrader her. Nynorsk du har skrevet selv, sjekkes ikke mot
+        endringer i bokmål – den må du holde ved like selv.</li>
+    </ol>
+  </details>
+  <div class="ledetekst-topp">
+    <span class="hint" style="margin:0">Ledetekst til Copilot</span>
+    <button class="lenkeknapp" id="ledetekst-standard" title="Hent standardteksten">Standard ↺</button>
+  </div>
+  <textarea class="ledetekst" id="ledetekst"></textarea>
+  <div class="ledetekst-topp">
+    <span class="hint" id="ledetekst-status" style="margin:0"></span>
+    <button class="lenkeknapp" id="ny-chat" title="Neste oversettelse starter en ny chat i Copilot">Start ny oversettelseschat</button>
+  </div>
+  <div class="hint" id="chat-info"></div>
+
+  <hr class="skillelinje">
+  <div class="seksjon-tittel">Lagrede fag</div>
+  <button class="liten" id="lag-malside" style="margin-bottom:8px;width:100%">📄 Lag malside fra modulene i dette faget</button>
+  <div class="hint" id="malside-status" style="margin:-4px 0 8px 0"></div>
+  <div id="bekreft" role="alertdialog" aria-labelledby="bekreft-tekst">
+    <div id="bekreft-tekst"></div>
+    <div class="knappar">
+      <button class="liten" id="bekreft-ja">OK</button>
+      <button class="avbryt" id="bekreft-nei">Avbryt</button>
+    </div>
+  </div>
   <div id="kursliste"></div>
   <div class="legg-til-rad">
     <input class="url-input" id="url" type="text" placeholder="Lim inn URL til malside…">
     <button class="liten" id="lagre">+ Legg til</button>
   </div>
   <div id="legg-til-status"></div>
+  <div class="hint" id="oppdater-status"></div>
+  <script src="felles.js"></script>
   <script src="popup.js"></script>
 </body>
 </html>

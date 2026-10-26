@@ -1,21 +1,21 @@
 {
   "manifest_version": 3,
   "name": "Canvas – Sett inn mal",
-  "version": "2.1",
-  "version_name": "2.1 – nynorsk-omsetting (lasta til GitHub 19.08.2026)",
-  "description": "Hentar mal frå malside i Canvas og set inn i Speed Grader. Støttar fleire kurs, og kan omsetje malen til nynorsk (via Apertium).",
+  "version": "2.2",
+  "version_name": "2.2 – nynorsk via Copilot og malside (lastet opp til GitHub 26.10.2026)",
+  "description": "Henter maler fra en malside i Canvas og setter dem inn i SpeedGrader. Støtter flere fag og maler på nynorsk (oversatt med Microsoft 365 Copilot).",
   "permissions": ["activeTab", "scripting", "commands", "storage", "tabs"],
-  "host_permissions": ["https://*.instructure.com/*", "https://apertium.org/*"],
+  "host_permissions": ["https://*.instructure.com/*", "https://m365.cloud.microsoft/*"],
   "background": { "service_worker": "background.js" },
   "action": { "default_popup": "popup.html", "default_icon": { "16": "icon16.png", "48": "icon48.png" } },
   "commands": {
     "sett-inn-mal": {
       "suggested_key": { "default": "Ctrl+Shift+M", "mac": "Command+Shift+M" },
-      "description": "Set inn mal frå Canvasside"
+      "description": "Sett inn mal fra malsiden"
     },
     "sett-inn-mal-nynorsk": {
       "suggested_key": { "default": "Ctrl+Shift+Y", "mac": "Alt+Shift+Y" },
-      "description": "Set inn mal omsett til nynorsk"
+      "description": "Sett inn mal på nynorsk"
     }
   },
   "icons": { "16": "icon16.png", "48": "icon48.png" }
