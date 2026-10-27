@@ -1,12 +1,16 @@
 // Felles for popup og bakgrunn (lastes med importScripts i background.js
-// og med <script> i popup.html).
+// og med <script> i popup.html), og lastes inn i Canvas-fanen før delOgBygg,
+// malSignatur m.fl. kjøres der.
+// NB: verdiene på toppnivå er «var», ikke «const»: fila lastes inn i samme
+// Canvas-fane mange ganger, og «const» gir da feilen «Identifier … has already
+// been declared» (sett i chrome://extensions 27.10.2026).
 
 // Standard ledetekst til Copilot. Læreren kan endre den i popupen;
 // «Standard ↺» henter denne fram igjen.
 // NB: «Bruk … «vi»» ble tolket som at læreren skulle snakke som «vi» («det tenker
 // jeg» → «det tenker vi», sett i Chrome 26.10.2026). Derfor står det nå uttrykkelig
 // at hvem som snakker ikke skal endres.
-const STANDARD_LEDETEKST =
+var STANDARD_LEDETEKST =
   'Oversett teksten under fra bokmål til nynorsk. Bruk e-infinitiv. ' +
   'Ikke endre hvem som snakker: «jeg» blir «eg», «vi» blir «vi» (ikke «me»). ' +
   'Hold tonen varm og enkel, slik en lærer skriver til en elev. ' +
@@ -15,7 +19,7 @@ const STANDARD_LEDETEKST =
 // Faste regler som alltid legges til etter lærerens ledetekst, så de ikke
 // kan fjernes ved et uhell. Merkene og @fornavn må overleve, ellers stopper
 // innsettingen.
-const FASTE_REGLAR =
+var FASTE_REGLAR =
   'Faste regler (gjelder alltid): Teksten er delt i nummererte biter [1], [2] osv. ' +
   'Svar med én linje per bit, i formatet [nummer] oversatt tekst, i samme rekkefølge. ' +
   'Behold alle merker som {1}, {/1} og {2/} nøyaktig – de markerer formatering, bilder og film. ' +
@@ -188,6 +192,25 @@ function malSignatur(html) {
   return hash(s.replace(/\s+/g, ' ').trim());
 }
 
+// Fingeravtrykk av innholdet slik læreren ser det: ordene (uten mellomrom) og
+// bilde-/filmadresser. Tagger og mellomrom telles ikke – Canvas-editoren rydder
+// i dem (tomme <span>, <br>, &nbsp;) i ALLE celler hver gang siden lagres, og
+// det ga falsk ✋ på mange celler når læreren rettet én (fag 597, 27.10.2026).
+// Prefikset «t:» skiller det fra det eldre malSignatur-avtrykket.
+function tekstSignatur(html) {
+  const d = document.createElement('div');
+  d.innerHTML = html || '';
+  const media = Array.from(d.querySelectorAll('img,iframe,video,audio,source,object,embed'))
+    .map(n => n.getAttribute('src') || n.getAttribute('data') || '').join('|');
+  return 't:' + hash(d.textContent.replace(/\s+/g, '') + '|' + media);
+}
+
+// Stemmer cellen med et lagret fingeravtrykk (nytt «t:»-format eller eldre malSignatur)?
+function sammeInnhald(html, lagra) {
+  if (!lagra) return false;
+  return lagra.startsWith('t:') ? tekstSignatur(html) === lagra : malSignatur(html) === lagra;
+}
+
 // Har cellen innhold (tekst eller bilde/film)?
 function harInnhald(html) {
   const d = document.createElement('div');
@@ -220,8 +243,8 @@ function dataRader(tabell) {
     .filter(tr => !tr.hasAttribute('data-mal-seksjon') && cellerIRad(tr).length >= 2);
 }
 
-const RETTLEIING_VERSJON = '7';
-const RETTLEIING_HTML =
+var RETTLEIING_VERSJON = '7';
+var RETTLEIING_HTML =
   `<div data-mal-rettleiing="${RETTLEIING_VERSJON}" style="border: 1px solid #b6d4ea; background-color: #f0f7fb; ` +
   'border-radius: 6px; padding: 12px 16px; margin-bottom: 16px; font-size: 12pt; line-height: 1.5;">' +
   '<p style="margin: 0 0 6px 0;"><strong>📋 Malside for Chrome-utvidelsen «Canvas – Sett inn mal»</strong></p>' +

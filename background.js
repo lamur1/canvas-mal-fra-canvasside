@@ -192,7 +192,7 @@ async function hentMal(tabId, malUrl, oppgavetittel, csrfToken, oppgaveId) {
         const nn = nnCelle && harInnhald(nnCelle.innerHTML) ? nnCelle.innerHTML : '';
         const nnSig = nnCelle?.getAttribute('data-bm') || '';
         const nnKolonne = kol.nn >= 0;
-        return { mal: celle.innerHTML, nn, nnKolonne, ledetekst: sideLedetekst(tabell), nnGyldig: !!nn && (!nnSig || nnSig === malSignatur(celle.innerHTML)) };
+        return { mal: celle.innerHTML, nn, nnKolonne, ledetekst: sideLedetekst(tabell), nnGyldig: !!nn && (!nnSig || sammeInnhald(celle.innerHTML, nnSig)) };
       } catch (e) { return { feil: e.message }; }
     },
     args: [malUrl, oppgavetittel, csrfToken, oppgaveId || null]
@@ -716,7 +716,7 @@ async function lesMalside(malUrl) {
       const nnSig = nnCelle?.getAttribute('data-bm') || '';
       const nnFinger = nnCelle?.getAttribute('data-nn') || '';
       // ✋ = nynorsken er endret etter at utvidelsen skrev den (eller skrevet helt for hånd)
-      const hand = harNn && (!nnSig || (!!nnFinger && malSignatur(nn) !== nnFinger));
+      const hand = harNn && (!nnSig || (!!nnFinger && !sammeInnhald(nn, nnFinger)));
       // 🕘 = oversatt med en annen (eller ukjent, eldre) ledetekst enn den siden har nå
       const eldre = harNn && !!nnSig && !hand && (nnCelle.getAttribute('data-lt') || '') !== ltHash;
       return {
@@ -726,8 +726,10 @@ async function lesMalside(malUrl) {
         borte: !!c[kol.tittel]?.querySelector('[data-mal-borte]'),
         bm, nn,
         harBm: harInnhald(bm), harNn: harInnhald(nn),
-        bmSig: harInnhald(bm) ? malSignatur(bm) : '',
-        nnSig: nnCelle?.getAttribute('data-bm') || ''
+        bmSig: harInnhald(bm) ? tekstSignatur(bm) : '',
+        nnSig,
+        // nynorsken er laget fra dagens bokmål (tåler både nytt og eldre fingeravtrykk)
+        bmLik: !!nnSig && sammeInnhald(bm, nnSig)
       };
     });
     const rv = doc.querySelector('[data-mal-rettleiing]');
@@ -800,7 +802,7 @@ async function skrivMalside(malUrl, lestVed, nye, valg) {
       td.innerHTML = ny.html;
       td.setAttribute('data-bm', ny.sig);                    // bokmålet nynorsken er laget fra
       if (ny.lt) td.setAttribute('data-lt', ny.lt);           // ledeteksten den er laget med
-      td.setAttribute('data-nn', malSignatur(td.innerHTML));  // nynorsken slik utvidelsen skrev den
+      td.setAttribute('data-nn', tekstSignatur(td.innerHTML));  // nynorsken slik utvidelsen skrev den
     });
     // Ny ledetekst for malsiden (tom/standard = fjern attributtet)
     if (valg && 'ledetekst' in valg) {
@@ -836,7 +838,7 @@ function planForRader(rader, valg = {}) {
       return;
     }
     if (r.harNn && !r.nnSig) plan.handskrive++;
-    else if (r.harNn && r.nnSig === r.bmSig) plan.uendra++;
+    else if (r.harNn && r.bmLik) plan.uendra++;
     else { plan.omset.push(i); if (r.hand) plan.handOverskrive++; }
   });
   return plan;
@@ -1277,10 +1279,10 @@ async function visVerktøy(tabId, k) {
     standard: STANDARD_LEDETEKST,
     antalBm: r.filter(x => x.harBm).length,
     tal: {
-      oppdatert: r.filter(x => x.harBm && x.harNn && !x.hand && !x.eldre && x.nnSig === x.bmSig).length,
+      oppdatert: r.filter(x => x.harBm && x.harNn && !x.hand && !x.eldre && x.bmLik).length,
       eldre: r.filter(x => x.harBm && x.eldre).length,
       hand: r.filter(x => x.harBm && x.hand).length,
-      mangler: r.filter(x => x.harBm && (!x.harNn || (x.nnSig && x.nnSig !== x.bmSig))).length
+      mangler: r.filter(x => x.harBm && (!x.harNn || (x.nnSig && !x.bmLik))).length
     },
     merker: r.map(x => ({ eldre: x.harBm && x.eldre, hand: x.harBm && x.hand, kan: x.harBm }))
   };
