@@ -41,11 +41,12 @@ function visKursliste(kurs) {
     kopier.textContent = '📋';
     kopier.addEventListener('click', () => kopierUrl(k.url, kopier));
 
-    const oppdater = document.createElement('button');
-    oppdater.className = 'kurs-kopier';
-    oppdater.title = 'Oppdater nynorsk på malsiden';
-    oppdater.textContent = '🔄';
-    oppdater.addEventListener('click', () => startOppdatering(k));
+    // Malsiden er arbeidsstedet for nynorsken: åpne den i ny fane
+    const opne = document.createElement('button');
+    opne.className = 'kurs-kopier';
+    opne.title = 'Åpne malsiden';
+    opne.textContent = '↗';
+    opne.addEventListener('click', () => chrome.tabs.create({ url: k.url }));
 
     const slett = document.createElement('button');
     slett.className = 'kurs-slett';
@@ -53,7 +54,7 @@ function visKursliste(kurs) {
     slett.title = 'Slett';
     slett.textContent = '✕';
 
-    rad.append(tekst, kopier, oppdater, slett);
+    rad.append(tekst, kopier, opne, slett);
     liste.appendChild(rad);
   });
 
@@ -106,42 +107,6 @@ function spør(tekst, jaTekst) {
     nei.onclick = () => ferdig(false);
   });
 }
-
-// ─── OPPDATER NYNORSK PÅ MALSIDEN ────────────────────────────────────────────
-// Viser først hva som vil skje og ber om bekreftelse. Selve jobben går i
-// bakgrunnen; framdriften kommer via chrome.storage.session («oppdatering»),
-// så popupen kan lukkes og åpnes igjen underveis.
-async function startOppdatering(k) {
-  const el = document.getElementById('oppdater-status');
-  el.style.color = '#555';
-  el.innerHTML = '<span class="spinner"></span>Leser malsiden…';
-  const r = await chrome.runtime.sendMessage({ action: 'oppdater-plan', kursId: k.kursId });
-  if (!r?.plan) { el.style.color = '#b3261e'; el.textContent = '⚠ ' + (r?.feil || 'Ukjent feil'); return; }
-  const p = r.plan;
-  if (!p.omset) {
-    el.style.color = 'green';
-    el.textContent = `✓ Nynorsk er oppdatert for «${k.namn}» (${p.uendra} uendret, ${p.handskrive} skrevet for hånd, ${p.tomme} tomme).`;
-    return;
-  }
-  el.textContent = '';
-  const ok = await spør(`${p.omset} maler blir oversatt til nynorsk med Copilot og skrevet i kolonnen «Nynorsk» på malsiden for «${k.namn}».\n\n` +
-    `${p.uendra} er uendret og ${p.handskrive} er skrevet for hånd – de røres ikke. ${p.tomme} er tomme.`, 'Oversett');
-  if (!ok) { el.textContent = ''; return; }
-  el.innerHTML = '<span class="spinner"></span>Starter …';
-  chrome.runtime.sendMessage({ action: 'oppdater-nynorsk', kursId: k.kursId });
-}
-
-function visOppdatering(o) {
-  const el = document.getElementById('oppdater-status');
-  if (!o || Date.now() - o.tid > 15 * 60 * 1000) return;
-  el.style.color = o.ferdig ? (o.ok ? 'green' : '#b3261e') : '#555';
-  if (o.ferdig) el.textContent = o.tekst;
-  else el.innerHTML = '<span class="spinner"></span>' + o.tekst.replace(/</g, '&lt;');
-}
-chrome.storage.session.get('oppdatering').then(({ oppdatering }) => visOppdatering(oppdatering));
-chrome.storage.onChanged.addListener((endring, område) => {
-  if (område === 'session' && endring.oppdatering) visOppdatering(endring.oppdatering.newValue);
-});
 
 // ─── LAG MALSIDE FRÅ MODULANE ────────────────────────────────────────────────
 // Faget i den aktive fanen. Ny malside, eller påfyll av innleveringer som
@@ -257,51 +222,6 @@ document.getElementById('btn-nynorsk').addEventListener('click', async () => {
   statusEl.style.color = result?.ok ? 'green' : 'red';
   statusEl.textContent = result?.ok ? '✓ Nynorsk-mal sett inn!' : ('⚠ ' + (result?.feil || 'Ukjent feil'));
   if (result?.reserve) visReserve();
-});
-
-// ─── LEDETEKST TIL COPILOT ───────────────────────────────────────────────────
-// Lagres per lærer i chrome.storage.sync (følger Chrome-kontoen). Tomt felt
-// eller uendret standardtekst = standarden brukes.
-const ledetekstEl = document.getElementById('ledetekst');
-const ledetekstStatus = document.getElementById('ledetekst-status');
-let ledetekstTimer = null;
-
-chrome.storage.sync.get('ledetekst').then(({ ledetekst }) => {
-  ledetekstEl.value = (ledetekst || '').trim() || STANDARD_LEDETEKST;
-});
-
-async function lagreLedetekst() {
-  const tekst = ledetekstEl.value.trim();
-  if (!tekst || tekst === STANDARD_LEDETEKST) await chrome.storage.sync.remove('ledetekst');
-  else await chrome.storage.sync.set({ ledetekst: tekst });
-  ledetekstStatus.textContent = '✓ Lagret';
-  setTimeout(() => { ledetekstStatus.textContent = ''; }, 1500);
-}
-
-ledetekstEl.addEventListener('input', () => {
-  clearTimeout(ledetekstTimer);
-  ledetekstTimer = setTimeout(lagreLedetekst, 600);
-});
-
-document.getElementById('ledetekst-standard').addEventListener('click', async () => {
-  ledetekstEl.value = STANDARD_LEDETEKST;
-  await lagreLedetekst();
-});
-
-// ─── FAST OVERSETTELSESCHAT ──────────────────────────────────────────────────
-// Viser hvor mange oversettelser den faste chatten har (ny chat etter 30, se
-// MAKS_PER_CHAT i background.js), og lar læreren starte en ny.
-async function visChatInfo() {
-  const { copilotChat } = await chrome.storage.local.get('copilotChat');
-  document.getElementById('chat-info').textContent = copilotChat?.url
-    ? `Fast chat i bruk: ${copilotChat.antal} av 30 oversettelser.`
-    : 'Neste oversettelse starter en ny fast chat.';
-}
-visChatInfo();
-
-document.getElementById('ny-chat').addEventListener('click', async () => {
-  await chrome.storage.local.remove('copilotChat');
-  visChatInfo();
 });
 
 // ─── RESERVE: FULLFØR FOR HÅND ───────────────────────────────────────────────

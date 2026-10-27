@@ -15,11 +15,9 @@
     details.rettleiing ol { margin: 4px 0 4px 18px; padding: 0; }
     details.rettleiing li { margin-bottom: 4px; }
     details.rettleiing code { background: #f1f3f5; padding: 0 3px; border-radius: 3px; font-size: 11px; }
-    .ledetekst-topp { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
-    textarea.ledetekst, textarea.svar { width: 100%; box-sizing: border-box; padding: 6px 8px; border: 1px solid #ccc; border-radius: 6px; font: 12px/1.4 Arial, sans-serif; resize: vertical; }
-    textarea.ledetekst { min-height: 84px; }
+    textarea.svar { width: 100%; box-sizing: border-box; padding: 6px 8px; border: 1px solid #ccc; border-radius: 6px; font: 12px/1.4 Arial, sans-serif; resize: vertical; }
     textarea.svar { min-height: 70px; }
-    textarea.ledetekst:focus, textarea.svar:focus { outline: none; border-color: #1a7a4a; }
+    textarea.svar:focus { outline: none; border-color: #1a7a4a; }
     button.lenkeknapp { background: none; border: none; color: #0460a7; cursor: pointer; font-size: 11px; padding: 0; }
     button.lenkeknapp:hover { text-decoration: underline; }
     .hint { font-size: 11px; color: #888; margin-top: 3px; min-height: 14px; }
@@ -84,78 +82,25 @@
 
   <hr class="skillelinje">
   <div class="seksjon-tittel">Nynorsk</div>
+  <div class="hint" style="font-size:12px;color:#555;margin-bottom:6px">Nynorsken lages, sjekkes og justeres på malsiden – der ligger også ledeteksten.
+    Åpne malsiden med ↗ ved faget under.</div>
   <details class="rettleiing">
-    <summary>Slik bruker du nynorsk-knappen</summary>
+    <summary>Slik bruker du utvidelsen</summary>
     <ol>
-      <li><strong>Raskest: ha nynorsken ferdig på malsiden.</strong> Malsiden har kolonnene
-        Tittel innlevering | Bokmål | Nynorsk. Nynorsk-knappen setter da inn malen med en gang,
-        uten Copilot. Første gang legger du til kolonnen «Nynorsk» med 🔄 ved faget under
-        («Lagrede fag»).
-        <br>· <strong>Bokmål er fasit – og nynorsken følger med av seg selv.</strong> Når du lagrer
-        malsiden (eller bare åpner den), finner utvidelsen malene der bokmålet er endret, oversetter
-        bare dem i bakgrunnen og oppdaterer kolonnen «Nynorsk». Et varsel midt på skjermen viser hva
-        som skjer, og siden lastes på nytt når nynorsken er klar.
-        <br>· I SpeedGrader: er nynorsken for en mal utdatert eller mangler, kommer varselet
-        <em>før</em> innsettingen – utvidelsen oppdaterer malsiden først og setter inn derfra.
-        <br>· Nynorsk du skriver eller retter <em>selv</em> i kolonnen, blir ikke overskrevet –
-        før du endrer bokmålsteksten i samme rad.
-        <br>· Den automatiske oppdateringen gjelder bare malsider som allerede har kolonnen «Nynorsk».</li>
-      <li><strong>Ny i et fag?</strong> Åpne faget i Canvas og trykk «📄 Lag malside fra modulene i dette
-        faget» (under «Lagrede fag»). Utvidelsen lager en upublisert malside med navnet ditt, alle
-        innleveringene i modulene (titlene er lenker til oppgavene) og kolonnene Bokmål og Nynorsk.
-        Trykk samme knapp når modulene endres underveis: nye innleveringer legges til på riktig plass,
-        oppgaver som har fått nytt navn, får oppdatert tittel, og oppgaver som er fjernet, merkes ⚠
-        (raden slettes ikke). Malteksten følger oppgaven, ikke navnet.</li>
-      <li><strong>Ha Copilot åpen i en egen fane</strong> mens du retter og når du redigerer malsiden,
-        innlogget med skolekontoen (samme som Office 365):
-        <a href="https://m365.cloud.microsoft/chat" target="_blank">m365.cloud.microsoft/chat</a>.
-        Står det «Kommersiell databeskyttelse» med et grønt skjold, er du på riktig sted.
-        Har du ingen Copilot-fane, åpner utvidelsen en festet fane selv.</li>
-      <li><strong>Utvidelsen bruker én fast chat i Copilot</strong> til alle oversettelsene. Den heter
-        «Oversett teksten under fra bokmål …» i chatlisten i Copilot, og der kan du bla opp og se alle
-        oversettelsene. En ny fast chat startes automatisk
-        <br>· etter 30 oversettelser (lange chatter blir trege),
-        <br>· når du endrer ledeteksten (så de gamle svarene ikke påvirker de nye),
-        <br>· når du trykker «Start ny oversettelseschat» under, eller hvis chatten er slettet.</li>
-      <li><strong>Bruk Copilot-fanen bare til utvidelsen</strong> mens du jobber med malene. Trenger du Copilot til
-        noe annet, åpner du en ny fane – men la oversettelsesfanen stå i den faste chatten.</li>
-      <li><strong>Trykk nynorsk-knappen</strong> (eller snarveien/Stream Deck) i SpeedGrader.
-        Står nynorsken ferdig på malsiden, settes den inn med en gang – uten Copilot.
-        Mangler den eller er den utdatert, oversetter utvidelsen først med Copilot-fanen liggende bak,
-        oppdaterer malsiden og setter så inn – du blir i SpeedGrader hele tiden. Skulle Chrome holde
-        igjen fanen bak, vises den et øyeblikk og jobben fullføres der.</li>
-      <li><strong>Ledeteksten under bestemmer hvilken nynorsk du får.</strong> Skriv den slik du ville
-        forklart det for en kollega. Eksempler på tillegg:
-        <br>· <em>Bruk a-infinitiv: skriva, halda, læra.</em> · <em>Bruk «eg» og «me».</em>
-        <br>· <em>Skriv «kvifor», ikke «korfor».</em> · <em>Bruk «veke», ikke «uke».</em>
-        <br>· <em>Ikke oversett navnet Ukelogg.</em> · <em>Hold setningene korte.</em>
-        <br>En endret ledetekst gjelder nye oversettelser. Nynorsk som allerede står på malsiden,
-        oversettes ikke på nytt – rett den direkte i kolonnen «Nynorsk».</li>
-      <li><strong>Bare teksten sendes til Copilot.</strong> Bilder, film, farger, lenker og tabeller
-        står urørt – nynorsk-malen ser ut akkurat som bokmålsmalen. Reglene om dette og om
-        <code>@fornavn</code> legger utvidelsen til selv. Blir noe endret, stopper utvidelsen i stedet for
-        å sette inn feil tekst.</li>
-      <li>Les gjennom før du sender kommentaren: Copilot kan av og til velge et annet ord enn du ville.</li>
-      <li><strong>Hurtigtaster</strong> (også for Stream Deck): bokmål ⌘⇧M, nynorsk ⌥⇧Y
-        (Windows: Ctrl+Shift+M og Ctrl+Shift+Y). Du kan endre dem i
+      <li><strong>Sett inn mal</strong> i SpeedGrader med knappene over, hurtigtast eller Stream Deck:
+        bokmål ⌘⇧M, nynorsk ⌥⇧Y (Windows: Ctrl+Shift+M og Ctrl+Shift+Y). Tastene kan endres i
         <code>chrome://extensions/shortcuts</code>.</li>
-      <li><strong>Regel: rediger malsiden på samme maskin og i samme nettleser som utvidelsen er
-        installert i</strong>, innlogget i Copilot. Da følger nynorsken alltid med. Endrer du bokmål
-        andre steder (annen nettleser, nettbrett), oppdateres nynorsken neste gang du åpner malsiden
-        eller setter inn malen i SpeedGrader her. Nynorsk du har skrevet selv, sjekkes ikke mot
-        endringer i bokmål – den må du holde ved like selv.</li>
+      <li><strong>Malsiden</strong> har kolonnene Tittel innlevering | Bokmål | Nynorsk. Bokmål er fasit:
+        lagrer du siden etter å ha endret bokmål, oversetter utvidelsen malen til nynorsk.
+        Verktøylinjen øverst på malsiden viser status, ledeteksten og «Oversett alle på nytt».
+        Veiledningen på malsiden forklarer resten.</li>
+      <li><strong>Ny i et fag?</strong> Åpne faget og trykk «📄 Lag malside fra modulene i dette faget».
+        Trykk samme knapp når modulene endres – nye innleveringer og nye navn kommer med.</li>
+      <li><strong>Vær innlogget i Office 365</strong> (f.eks. Outlook) i Chrome. Copilot logger seg da inn av seg selv.
+        Utvidelsen bruker en Copilot-fane som ligger bak – bruk den bare til utvidelsen.</li>
+      <li>Les gjennom nynorsken før du sender kommentaren.</li>
     </ol>
   </details>
-  <div class="ledetekst-topp">
-    <span class="hint" style="margin:0">Ledetekst til Copilot</span>
-    <button class="lenkeknapp" id="ledetekst-standard" title="Hent standardteksten">Standard ↺</button>
-  </div>
-  <textarea class="ledetekst" id="ledetekst"></textarea>
-  <div class="ledetekst-topp">
-    <span class="hint" id="ledetekst-status" style="margin:0"></span>
-    <button class="lenkeknapp" id="ny-chat" title="Neste oversettelse starter en ny chat i Copilot">Start ny oversettelseschat</button>
-  </div>
-  <div class="hint" id="chat-info"></div>
 
   <hr class="skillelinje">
   <div class="seksjon-tittel">Lagrede fag</div>
@@ -174,7 +119,6 @@
     <button class="liten" id="lagre">+ Legg til</button>
   </div>
   <div id="legg-til-status"></div>
-  <div class="hint" id="oppdater-status"></div>
   <script src="felles.js"></script>
   <script src="popup.js"></script>
 </body>

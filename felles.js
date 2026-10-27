@@ -220,27 +220,38 @@ function dataRader(tabell) {
     .filter(tr => !tr.hasAttribute('data-mal-seksjon') && cellerIRad(tr).length >= 2);
 }
 
-const RETTLEIING_VERSJON = '3';
+const RETTLEIING_VERSJON = '7';
 const RETTLEIING_HTML =
   `<div data-mal-rettleiing="${RETTLEIING_VERSJON}" style="border: 1px solid #b6d4ea; background-color: #f0f7fb; ` +
-  'border-radius: 6px; padding: 12px 16px; margin-bottom: 16px; font-size: 14px; line-height: 1.5;">' +
+  'border-radius: 6px; padding: 12px 16px; margin-bottom: 16px; font-size: 12pt; line-height: 1.5;">' +
   '<p style="margin: 0 0 6px 0;"><strong>📋 Malside for Chrome-utvidelsen «Canvas – Sett inn mal»</strong></p>' +
-  '<p style="margin: 0 0 6px 0;">Denne siden henger sammen med Chrome-utvidelsen. Utvidelsen henter malene herfra og setter dem inn i SpeedGrader.</p>' +
+  '<p style="margin: 0 0 6px 0;">Utvidelsen henter malene herfra og setter dem inn i SpeedGrader. Bokmål er fasit – nynorsken ' +
+  'lages av utvidelsen med Microsoft 365 Copilot. Med utvidelsen installert ser du en verktøylinje over tabellen med status, ' +
+  'ledetekst og «Oversett alle på nytt».</p>' +
   '<ul style="margin: 0; padding-left: 20px;">' +
-  '<li><strong>Tittel innlevering</strong> er koblet til oppgaven i Canvas (lenken). Får oppgaven nytt navn, oppdateres ' +
-  'tittelen her når du trykker «📄 Lag malside fra modulene». Rader merket ⚠ finnes ikke lenger i modulene.</li>' +
-  '<li><strong>Bokmål er fasit.</strong> Skriv og endre malene her. @fornavn byttes ut med elevens fornavn.</li>' +
-  '<li><strong>Nynorsk fylles ut av utvidelsen</strong> (Copilot) når du lagrer siden. Bilder, film og formatering blir med.</li>' +
-  '<li><strong>Nye innleveringer</strong> i modulene legges til med «📄 Lag malside fra modulene i dette faget» i utvidelsen. ' +
-  'Eksisterende rader røres ikke.</li>' +
-  '<li><strong>Endrer du bokmål i en rad, oversettes nynorsken i samme rad på nytt</strong> – også om du har rettet den for hånd. ' +
-  'Vil du rette nynorsken: lagre bokmålsendringen først, vent på grønt varsel, rett så nynorsken og lagre igjen.</li>' +
-  '<li>Nynorsk du retter uten å endre bokmål i samme rad, blir stående.</li>' +
-  '<li><strong>Rediger siden i Chrome med utvidelsen installert</strong> og innlogget i Copilot (skolekontoen). ' +
+  '<li><strong>Én mal:</strong> Endrer du teksten i Bokmål-cellen og lagrer siden, oversetter utvidelsen malen til nynorsk. ' +
+  'Bilder, film og formatering blir med. @fornavn byttes ut med elevens fornavn.</li>' +
+  '<li><strong>Ledeteksten:</strong> Endrer du ledeteksten (instruksen til Copilot), skjer ingenting med nynorsken som står der. ' +
+  'Den nye ledeteksten brukes neste gang en mal oversettes – når du endrer en bokmålstekst eller skriver en ny mal. ' +
+  'Ledeteksten gjelder for hele malsiden, også for kolleger som bruker den.</li>' +
+  '<li><strong>Alle malene:</strong> Velger du «Oversett alle på nytt», oversettes alle malene på nytt etter ledeteksten. ' +
+  'Nynorsk du har rettet selv (✋), blir stående. Vil du ta den med, krysser du av for «Ta med … rettet for hånd» ' +
+  'i bekreftelsen som kommer når du trykker knappen.</li>' +
+  '<li><strong>Dine rettelser:</strong> Retter du i Nynorsk-cellen, blir rettelsen stående – til du endrer bokmålet i samme rad, ' +
+  'eller tar den med i «Oversett alle på nytt».</li>' +
+  '<li><strong>Tittel innlevering</strong> er koblet til oppgaven i Canvas (lenken). Nye innleveringer og nye navn hentes med ' +
+  '«📄 Lag malside fra modulene i dette faget» i utvidelsen. Rader merket ⚠ finnes ikke lenger i modulene.</li>' +
+  '<li><strong>Rediger siden i Chrome med utvidelsen installert</strong>, innlogget i Office 365 (skolekontoen). ' +
   'Ellers oppdateres nynorsken neste gang siden åpnes der.</li>' +
   '<li>Ikke endre navnene på kolonnene <strong>Bokmål</strong> og <strong>Nynorsk</strong>. Andre kolonner kan du ha som du vil. ' +
   'Denne boksen holdes ved like av utvidelsen.</li>' +
   '</ul></div>';
+
+// Ledeteksten følger malsiden (felles for alle som bruker den) og lagres som
+// data-mal-ledetekst på tabellen. Tom = utvidelsens standard.
+function sideLedetekst(tabell) {
+  return (tabell?.getAttribute('data-mal-ledetekst') || '').trim() || STANDARD_LEDETEKST;
+}
 
 // Sørger for at veiledningsboksen står øverst (før tabellen) i nyeste versjon.
 // Returnerer true hvis dokumentet ble endret.

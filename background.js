@@ -37,6 +37,10 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     oppdaterNynorsk(message.kursId).then(sendResponse);
     return true;
   }
+  if (message.action === 'malside-handling') {
+    malsideHandling(message, sender.tab?.id).then(sendResponse);
+    return true;
+  }
   if (message.action === 'hent-kursnamn') {
     hentKursnamn(message.kursId).then(sendResponse);
     return true;
@@ -188,7 +192,7 @@ async function hentMal(tabId, malUrl, oppgavetittel, csrfToken, oppgaveId) {
         const nn = nnCelle && harInnhald(nnCelle.innerHTML) ? nnCelle.innerHTML : '';
         const nnSig = nnCelle?.getAttribute('data-bm') || '';
         const nnKolonne = kol.nn >= 0;
-        return { mal: celle.innerHTML, nn, nnKolonne, nnGyldig: !!nn && (!nnSig || nnSig === malSignatur(celle.innerHTML)) };
+        return { mal: celle.innerHTML, nn, nnKolonne, ledetekst: sideLedetekst(tabell), nnGyldig: !!nn && (!nnSig || nnSig === malSignatur(celle.innerHTML)) };
       } catch (e) { return { feil: e.message }; }
     },
     args: [malUrl, oppgavetittel, csrfToken, oppgaveId || null]
@@ -637,9 +641,8 @@ async function køyrDelOgBygg(tabId, mal, svarTekst) {
   return res?.[0]?.result || { avvik: ['ingen respons'] };
 }
 
-async function omsettMedCopilot({ kursId, tittel, mal, speedgraderTabId }) {
-  const { ledetekst } = await chrome.storage.sync.get('ledetekst');
-  const lt = (ledetekst || '').trim() || STANDARD_LEDETEKST;
+async function omsettMedCopilot({ kursId, tittel, mal, speedgraderTabId, ledetekst }) {
+  const lt = (ledetekst || '').trim() || STANDARD_LEDETEKST;  // ledeteksten på malsiden
   const nokkel = 'nn:' + hash([kursId, tittel, lt, mal].join('\u0001'));
 
   const lagra = (await chrome.storage.session.get(nokkel))[nokkel];
@@ -702,12 +705,22 @@ async function lesMalside(malUrl) {
     const tabell = doc.querySelector('table');
     if (!tabell) return { feil: 'Fant ingen tabell på malsiden.' };
     const kol = finnKolonnar(tabell);
+    const lt = sideLedetekst(tabell);
+    const ltHash = hash(lt);
     const rader = dataRader(tabell).map((tr) => {
       const c = cellerIRad(tr);
       const bm = c[kol.bm]?.innerHTML || '';
       const nnCelle = kol.nn >= 0 ? c[kol.nn] : null;
       const nn = nnCelle?.innerHTML || '';
+      const harNn = harInnhald(nn);
+      const nnSig = nnCelle?.getAttribute('data-bm') || '';
+      const nnFinger = nnCelle?.getAttribute('data-nn') || '';
+      // ✋ = nynorsken er endret etter at utvidelsen skrev den (eller skrevet helt for hånd)
+      const hand = harNn && (!nnSig || (!!nnFinger && malSignatur(nn) !== nnFinger));
+      // 🕘 = oversatt med en annen (eller ukjent, eldre) ledetekst enn den siden har nå
+      const eldre = harNn && !!nnSig && !hand && (nnCelle.getAttribute('data-lt') || '') !== ltHash;
       return {
+        hand, eldre,
         tittel: tittelTekst(c[kol.tittel]),
         oppgaveId: oppgaveIdFor(c[kol.tittel]),
         borte: !!c[kol.tittel]?.querySelector('[data-mal-borte]'),
@@ -719,7 +732,8 @@ async function lesMalside(malUrl) {
     });
     const rv = doc.querySelector('[data-mal-rettleiing]');
     return { kurs: m[1], side: d.page_id || m[2], oppdatert: d.updated_at, rader,
-      nnKolonne: kol.nn >= 0, rettleiingOk: rv?.getAttribute('data-mal-rettleiing') === RETTLEIING_VERSJON };
+      nnKolonne: kol.nn >= 0, rettleiingOk: rv?.getAttribute('data-mal-rettleiing') === RETTLEIING_VERSJON,
+      ledetekst: (tabell.getAttribute('data-mal-ledetekst') || '').trim(), lt, ltHash };
   } catch (e) { return { feil: e.message }; }
 }
 
@@ -736,7 +750,7 @@ function delRader(htmlar, svar) {
 
 // Skriver nynorsk i kolonne 3 og lagrer. Stopper hvis siden er endret siden den
 // ble lest. Legger til kolonnen «Nynorsk» og døper «Maltekst» om til «Bokmål».
-async function skrivMalside(malUrl, lestVed, nye) {
+async function skrivMalside(malUrl, lestVed, nye, valg) {
   try {
     const m = malUrl.match(/\/courses\/(\d+)\/pages\/([^/?#]+)/);
     const url = `/api/v1/courses/${m[1]}/pages/${m[2]}`;
@@ -784,8 +798,16 @@ async function skrivMalside(malUrl, lestVed, nye) {
       if (!ny) return;
       const td = cellerIRad(tr)[nnIdx];
       td.innerHTML = ny.html;
-      td.setAttribute('data-bm', ny.sig);
+      td.setAttribute('data-bm', ny.sig);                    // bokmålet nynorsken er laget fra
+      if (ny.lt) td.setAttribute('data-lt', ny.lt);           // ledeteksten den er laget med
+      td.setAttribute('data-nn', malSignatur(td.innerHTML));  // nynorsken slik utvidelsen skrev den
     });
+    // Ny ledetekst for malsiden (tom/standard = fjern attributtet)
+    if (valg && 'ledetekst' in valg) {
+      const t = (valg.ledetekst || '').trim();
+      if (!t || t === STANDARD_LEDETEKST) tabell.removeAttribute('data-mal-ledetekst');
+      else tabell.setAttribute('data-mal-ledetekst', t);
+    }
     sikreRettleiing(doc, tabell);
     const csrf = decodeURIComponent((document.cookie.match(/(?:^|;\s*)_csrf_token=([^;]*)/) || [])[1] || '');
     const res = await fetch(url, {
@@ -798,13 +820,24 @@ async function skrivMalside(malUrl, lestVed, nye) {
   } catch (e) { return { feil: e.message }; }
 }
 
-function planForRader(rader) {
-  const plan = { omset: [], uendra: 0, handskrive: 0, tomme: 0 };
+// Hvilke rader skal oversettes?
+// · auto (standard): rader der bokmål er nytt eller endret. Rader med nynorsk
+//   skrevet helt for hånd (uten data-bm) røres ikke.
+// · modus 'alle': alle rader med bokmål, unntatt ✋ (med mindre taMedHand).
+// · rader: [i, …]: bare disse radene (↻ per rad på malsiden).
+function planForRader(rader, valg = {}) {
+  const plan = { omset: [], uendra: 0, handskrive: 0, tomme: 0, handOverskrive: 0 };
   rader.forEach((r, i) => {
-    if (!r.harBm) plan.tomme++;
-    else if (r.harNn && !r.nnSig) plan.handskrive++;
+    if (!r.harBm) { plan.tomme++; return; }
+    if (valg.rader) { if (valg.rader.includes(i)) plan.omset.push(i); return; }
+    if (valg.modus === 'alle') {
+      if (r.hand && !valg.taMedHand) plan.handskrive++;
+      else plan.omset.push(i);
+      return;
+    }
+    if (r.harNn && !r.nnSig) plan.handskrive++;
     else if (r.harNn && r.nnSig === r.bmSig) plan.uendra++;
-    else plan.omset.push(i);
+    else { plan.omset.push(i); if (r.hand) plan.handOverskrive++; }
   });
   return plan;
 }
@@ -860,7 +893,7 @@ async function oppdaterNynorskIndre(kursId, valg) {
   const side = await iKanvas(tab.id, lesMalside, [k.url]);
   if (!side || side.feil) return { feil: side?.feil || 'Kunne ikke lese malsiden.' };
   if (valg.auto && !side.nnKolonne) return { ok: true, omsett: 0, ikkjeAktiv: true };
-  const plan = planForRader(side.rader);
+  const plan = planForRader(side.rader, valg);
   if (!plan.omset.length) {
     // Siden har Nynorsk-kolonne, men veiledningsboksen mangler/er gammel: legg den inn
     if (side.nnKolonne && !side.rettleiingOk) await iKanvas(tab.id, skrivMalside, [k.url, side.oppdatert, {}]);
@@ -868,18 +901,20 @@ async function oppdaterNynorskIndre(kursId, valg) {
     return { ok: true, omsett: 0 };
   }
 
-  const { ledetekst } = await chrome.storage.sync.get('ledetekst');
-  const lt = (ledetekst || '').trim() || STANDARD_LEDETEKST;
-  const ltHash = hash(lt);
-  const nye = {};        // radindeks → { html, sig }
+  // Ledeteksten følger malsiden
+  const lt = side.lt;
+  const ltHash = side.ltHash;
+  const nye = {};        // radindeks → { html, sig, lt }
   const feila = [];
 
-  // Det som alt er oversatt (tidligere avbrutt kjøring), hentes fra minnet
+  // Det som alt er oversatt (tidligere avbrutt kjøring), hentes fra minnet –
+  // men ikke når læreren selv ber om ny oversettelse (alle / én rad)
   const minneNøkkel = i => `nnrad:${ltHash}:${side.rader[i].bmSig}`;
+  const brukMinne = !valg.modus && !valg.rader;
   const gjenstår = [];
   for (const i of plan.omset) {
-    const lagra = (await chrome.storage.session.get(minneNøkkel(i)))[minneNøkkel(i)];
-    if (lagra) nye[i] = { html: lagra, sig: side.rader[i].bmSig };
+    const lagra = brukMinne ? (await chrome.storage.session.get(minneNøkkel(i)))[minneNøkkel(i)] : null;
+    if (lagra) nye[i] = { html: lagra, sig: side.rader[i].bmSig, lt: ltHash };
     else gjenstår.push(i);
   }
 
@@ -912,14 +947,17 @@ async function oppdaterNynorskIndre(kursId, valg) {
     }
     for (let k = 0; k < rader.length; k++) {
       const i = rader[k];
-      nye[i] = { html: resultat[k], sig: side.rader[i].bmSig };
+      nye[i] = { html: resultat[k], sig: side.rader[i].bmSig, lt: ltHash };
       await chrome.storage.session.set({ [minneNøkkel(i)]: resultat[k] });
     }
     return true;
   };
 
   const n = plan.omset.length;
-  await meld({ tekst: `🔄 Bokmål er endret – oversetter ${n} ${n === 1 ? 'mal' : 'maler'} til nynorsk …` });
+  const start = valg.modus === 'alle' ? `🔄 Oversetter ${n} ${n === 1 ? 'mal' : 'maler'} på nytt etter ledeteksten …`
+    : valg.rader ? '🔄 Oversetter malen på nytt …'
+    : `🔄 Bokmål er endret – oversetter ${n} ${n === 1 ? 'mal' : 'maler'} til nynorsk …`;
+  await meld({ tekst: start });
   let ferdige = plan.omset.length - gjenstår.length;
   try {
     for (const p of puljer) {
@@ -942,10 +980,14 @@ async function oppdaterNynorskIndre(kursId, valg) {
     return { feil: skrive?.feil || 'Lagringen feilet.' };
   }
   const omsett = Object.keys(nye).length;
-  const tekst = `✓ Nynorsk oppdatert: ${omsett} oversatt` + (feila.length ? `, ${feila.length} feilet (${feila.slice(0, 3).join('; ')})` : '') +
-    `. ${plan.uendra} uendret, ${plan.handskrive} skrevet for hånd.`;
+  let tekst = `✓ Nynorsk oppdatert: ${omsett} oversatt` + (feila.length ? `, ${feila.length} feilet (${feila.slice(0, 3).join('; ')})` : '') + '.';
+  if (valg.modus === 'alle' && plan.handskrive) tekst += ` ${plan.handskrive} rettet for hånd (✋) er hoppet over.`;
+  if (plan.handOverskrive) {
+    tekst += ` Merk: ${plan.handOverskrive} ${plan.handOverskrive === 1 ? 'mal du hadde' : 'maler du hadde'} rettet for hånd, ` +
+      'er oversatt på nytt fordi bokmålet er endret. Forrige versjon finnes i sidens historikk.';
+  }
   await meld({ ferdig: true, ok: !feila.length, tekst });
-  return { ok: true, omsett, feila };
+  return { ok: true, omsett, feila, rader: Object.keys(nye).map(Number).sort((a, b) => a - b) };
 }
 
 // ─── LAG MALSIDE FRÅ MODULANE ────────────────────────────────────────────────
@@ -1198,18 +1240,239 @@ chrome.tabs.onUpdated.addListener(async (tabId, info, tab) => {
   const { kurs = [] } = await chrome.storage.local.get('kurs');
   const k = kurs.find(x => malsideSti(x.url) === malsideSti(tab.url));
   if (!k) return;
-  if (Date.now() - (sistAuto.get(tabId) || 0) < 5000) return;
-  sistAuto.set(tabId, Date.now());
   // Etter adresseendring: gi Canvas et øyeblikk til å bli ferdig med visningen
   if (info.url && info.status !== 'complete') await new Promise(r => setTimeout(r, 1500));
-  const res = await oppdaterNynorsk(k.kursId, { tabId, melding: true, auto: true });
-  if (res.ok && res.omsett > 0) {
-    const nå = await chrome.tabs.get(tabId).catch(() => null);
-    if (nå && malsideSti(nå.url) === malsideSti(k.url) && !/\/edit/.test(nå.url)) {
-      setTimeout(() => chrome.tabs.reload(tabId).catch(() => {}), 2500);
+  // Automatisk oppdatering høyst én gang per 5 s per fane (vår egen omlasting
+  // etter skriving kommer innenfor den tiden og går rett til verktøylinja)
+  if (Date.now() - (sistAuto.get(tabId) || 0) >= 5000) {
+    sistAuto.set(tabId, Date.now());
+    const res = await oppdaterNynorsk(k.kursId, { tabId, melding: true, auto: true });
+    if (res.ok && res.omsett > 0) { lastMalsidePåNytt(tabId, k, 2500, res.rader); return; }
+  }
+  await visVerktøy(tabId, k);
+});
+
+// Laster malsiden på nytt (så ny nynorsk vises) hvis fanen fortsatt viser den
+// rullTil: radindekser å rulle til og utheve etter omlasting, eller 'verktøy'
+async function lastMalsidePåNytt(tabId, k, ventMs = 2500, rullTil = null) {
+  const nå = await chrome.tabs.get(tabId).catch(() => null);
+  if (nå && malsideSti(nå.url) === malsideSti(k.url) && !/\/edit/.test(nå.url)) {
+    if (rullTil) await chrome.storage.session.set({ [`rull:${tabId}`]: { rullTil, tid: Date.now() } });
+    setTimeout(() => chrome.tabs.reload(tabId).catch(() => {}), ventMs);
+  }
+}
+
+// ─── VERKTØYLINJE PÅ MALSIDEN ────────────────────────────────────────────────
+// Vises bare i visningen av malsiden, bare med utvidelsen, og lagres aldri i
+// siden: status for nynorsken, ledeteksten (felles for malsiden), «Oversett alle
+// på nytt» og merker per rad (🕘 eldre ledetekst, ✋ rettet for hånd, ↻ én rad).
+async function visVerktøy(tabId, k) {
+  const side = await iKanvas(tabId, lesMalside, [k.url]).catch(() => null);
+  if (!side || side.feil) return;
+  const r = side.rader;
+  const status = {
+    kursId: k.kursId,
+    nnKolonne: side.nnKolonne,
+    ledetekst: side.lt,
+    standard: STANDARD_LEDETEKST,
+    antalBm: r.filter(x => x.harBm).length,
+    tal: {
+      oppdatert: r.filter(x => x.harBm && x.harNn && !x.hand && !x.eldre && x.nnSig === x.bmSig).length,
+      eldre: r.filter(x => x.harBm && x.eldre).length,
+      hand: r.filter(x => x.harBm && x.hand).length,
+      mangler: r.filter(x => x.harBm && (!x.harNn || (x.nnSig && x.nnSig !== x.bmSig))).length
+    },
+    merker: r.map(x => ({ eldre: x.harBm && x.eldre, hand: x.harBm && x.hand, kan: x.harBm }))
+  };
+  const nøkkel = `rull:${tabId}`;
+  const rull = (await chrome.storage.session.get(nøkkel))[nøkkel];
+  if (rull) {
+    await chrome.storage.session.remove(nøkkel);
+    if (Date.now() - rull.tid < 60000) status.rullTil = rull.rullTil;
+  }
+  await iKanvas(tabId, teiknVerktøy, [status]).catch(() => {});
+}
+
+// Kjører i malside-fanen (isolert verden, felles.js lastet)
+function teiknVerktøy(status) {
+  const tabell = document.querySelector('.show-content table, .user_content table');
+  if (!tabell) return;
+  document.getElementById('mal-verktoy')?.remove();
+  document.querySelectorAll('.mal-merke, .mal-rad-knapp').forEach(e => e.remove());
+  if (!document.getElementById('mal-verktoy-stil')) {
+    const st = document.createElement('style');
+    st.id = 'mal-verktoy-stil';
+    st.textContent =
+      '#mal-verktoy{border:1px solid #b6d4ea;background:#f6f9fc;border-radius:6px;padding:10px 14px;margin:0 0 12px 0;' +
+      'font:12pt/1.45 Lato,Arial,sans-serif;color:#2d3b45}' +
+      '#mal-verktoy button{font:11pt Lato,Arial,sans-serif;border-radius:5px;padding:5px 12px;cursor:pointer;border:1px solid #0460a7}' +
+      '#mal-verktoy .hoved{background:#0460a7;color:#fff}#mal-verktoy .sekundar{background:#fff;color:#0460a7}' +
+      '#mal-verktoy .panel{margin-top:10px;padding-top:10px;border-top:1px solid #d7e6f1}' +
+      '#mal-verktoy textarea{width:100%;box-sizing:border-box;min-height:70px;font:11pt/1.4 Lato,Arial,sans-serif;padding:6px 8px;' +
+      'border:1px solid #b6c2cc;border-radius:5px}' +
+      '#mal-verktoy .hint{font-size:10.5pt;color:#5b6b75}' +
+      '.mal-merke{float:right;margin-left:6px;font-size:13px;cursor:help}' +
+      '.mal-rad-knapp{float:right;margin-left:6px;border:1px solid #b6c2cc;background:#fff;border-radius:4px;font-size:12px;' +
+      'line-height:1;padding:2px 5px;cursor:pointer;opacity:.35}' +
+      'td:hover > .mal-rad-knapp,.mal-rad-knapp:focus{opacity:1}';
+    document.head.appendChild(st);
+  }
+  const send = (melding) => chrome.runtime.sendMessage({ action: 'malside-handling', kursId: status.kursId, ...melding });
+  const boks = document.createElement('div');
+  boks.id = 'mal-verktoy';
+  const el = (tag, attr = {}, tekst) => {
+    const e = document.createElement(tag);
+    Object.entries(attr).forEach(([k, v]) => e.setAttribute(k, v));
+    if (tekst != null) e.textContent = tekst;
+    return e;
+  };
+  boks.appendChild(el('div', { style: 'font-weight:bold;margin-bottom:4px' }, '🈁 Nynorsk på denne malsiden'));
+
+  if (!status.nnKolonne) {
+    boks.appendChild(el('div', { class: 'hint', style: 'margin-bottom:8px' },
+      'Malsiden har ikke kolonnen «Nynorsk» ennå. Utvidelsen legger den inn rett etter Bokmål og oversetter malene.'));
+    const k = el('button', { class: 'hoved' }, 'Legg til Nynorsk-kolonnen og oversett');
+    k.onclick = () => { k.disabled = true; send({ type: 'kolonne' }); };
+    boks.appendChild(k);
+    tabell.parentNode.insertBefore(boks, tabell);
+    return;
+  }
+
+  const t = status.tal;
+  const deler = [`${t.oppdatert} oppdatert`];
+  if (t.eldre) deler.push(`${t.eldre} med eldre ledetekst 🕘`);
+  if (t.hand) deler.push(`${t.hand} rettet for hånd ✋`);
+  if (t.mangler) deler.push(`${t.mangler} venter på oversettelse`);
+  boks.appendChild(el('div', {}, deler.join(' · ')));
+  boks.appendChild(el('div', { class: 'hint', style: 'margin:2px 0 8px 0' },
+    'Endret bokmål oversettes automatisk når du lagrer siden. ↻ i en nynorsk-celle oversetter den malen på nytt med ledeteksten.'));
+
+  const knappar = el('div', { style: 'display:flex;gap:8px;flex-wrap:wrap' });
+  const alleKnapp = el('button', { class: 'hoved' }, 'Oversett alle på nytt');
+  const ltKnapp = el('button', { class: 'sekundar' }, 'Ledetekst ▾');
+  knappar.append(alleKnapp, ltKnapp);
+  boks.appendChild(knappar);
+
+  // Ledetekst (felles for malsiden)
+  const ltPanel = el('div', { class: 'panel', style: 'display:none' });
+  ltPanel.appendChild(el('div', { style: 'font-weight:bold;margin-bottom:4px' }, 'Ledetekst til Copilot – gjelder hele malsiden'));
+  const felt = el('textarea');
+  felt.value = status.ledetekst;
+  ltPanel.appendChild(felt);
+  const ltKnappar = el('div', { style: 'display:flex;gap:8px;margin-top:6px;align-items:center' });
+  const lagre = el('button', { class: 'hoved' }, 'Lagre ledetekst');
+  const standard = el('button', { class: 'sekundar' }, 'Standard ↺');
+  ltKnappar.append(lagre, standard);
+  ltPanel.appendChild(ltKnappar);
+  ltPanel.appendChild(el('div', { class: 'hint', style: 'margin-top:6px' },
+    'Nynorsken som står der, endres ikke. Den nye ledeteksten brukes neste gang en mal oversettes – når du endrer en ' +
+    'bokmålstekst, skriver en ny mal eller velger «Oversett alle på nytt».'));
+  boks.appendChild(ltPanel);
+  ltKnapp.onclick = () => {
+    const vis = ltPanel.style.display === 'none';
+    ltPanel.style.display = vis ? 'block' : 'none';
+    ltKnapp.textContent = vis ? 'Ledetekst ▴' : 'Ledetekst ▾';
+  };
+  standard.onclick = () => { felt.value = status.standard; };
+  lagre.onclick = () => { lagre.disabled = true; send({ type: 'ledetekst', tekst: felt.value }); };
+
+  // Bekreftelse for «Oversett alle på nytt»
+  const bekreft = el('div', { class: 'panel', style: 'display:none' });
+  const tekst = el('div', { style: 'margin-bottom:6px' });
+  bekreft.appendChild(tekst);
+  let taMed = null;
+  if (t.hand) {
+    const etikett = el('label', { class: 'hint', style: 'display:block;margin-bottom:8px' });
+    taMed = el('input', { type: 'checkbox', style: 'margin-right:6px' });
+    etikett.append(taMed, `Ta med ${t.hand} ${t.hand === 1 ? 'mal' : 'maler'} rettet for hånd (✋) – rettelsene dine overskrives`);
+    bekreft.appendChild(etikett);
+  }
+  const bk = el('div', { style: 'display:flex;gap:8px' });
+  const ja = el('button', { class: 'hoved' });
+  const nei = el('button', { class: 'sekundar' }, 'Avbryt');
+  bk.append(ja, nei);
+  bekreft.appendChild(bk);
+  boks.appendChild(bekreft);
+  const antal = () => status.antalBm - (taMed && taMed.checked ? 0 : t.hand);
+  const oppdaterTekst = () => {
+    const n = antal();
+    tekst.textContent = `Oversette ${n} ${n === 1 ? 'mal' : 'maler'} på nytt med ledeteksten? Copilot lager ny nynorsk for hele malen – ` +
+      'også ord du var fornøyd med, kan bli endret. Forrige versjon finnes i sidens historikk i Canvas.';
+    ja.textContent = `Oversett ${n} på nytt`;
+  };
+  if (taMed) taMed.onchange = oppdaterTekst;
+  alleKnapp.onclick = () => { oppdaterTekst(); bekreft.style.display = 'block'; };
+  nei.onclick = () => { bekreft.style.display = 'none'; };
+  ja.onclick = () => { ja.disabled = true; send({ type: 'alle', taMedHand: !!(taMed && taMed.checked) }); };
+
+  tabell.parentNode.insertBefore(boks, tabell);
+
+  // Merker og ↻ i nynorsk-cellene
+  const kol = finnKolonnar(tabell);
+  if (kol.nn < 0) return;
+  dataRader(tabell).forEach((tr, i) => {
+    const m = status.merker[i];
+    const celle = cellerIRad(tr)[kol.nn];
+    if (!m || !celle || !m.kan) return;
+    const knapp = el('button', { class: 'mal-rad-knapp', title: 'Oversett denne malen på nytt med malsidens ledetekst' }, '↻');
+    knapp.onclick = () => {
+      if (m.hand && !confirm('Du har rettet denne nynorsken for hånd. Oversette malen på nytt og overskrive rettelsen?')) return;
+      knapp.disabled = true;
+      send({ type: 'rad', rad: i });
+    };
+    celle.prepend(knapp);
+    if (m.hand) celle.prepend(el('span', { class: 'mal-merke', title: 'Rettet for hånd – røres ikke av «Oversett alle på nytt»' }, '✋'));
+    else if (m.eldre) celle.prepend(el('span', { class: 'mal-merke', title: 'Oversatt med en eldre ledetekst' }, '🕘'));
+  });
+
+  // Etter omlasting: rull til raden(e) som nettopp ble oversatt og uthev dem kort,
+  // eller til verktøylinja (etter ny ledetekst / «Oversett alle på nytt»)
+  if (status.rullTil === 'verktøy') {
+    boks.scrollIntoView({ block: 'start' });
+  } else if (Array.isArray(status.rullTil) && status.rullTil.length) {
+    const rader = dataRader(tabell);
+    const merk = status.rullTil.map(i => rader[i]).filter(Boolean);
+    if (merk.length) {
+      merk[0].scrollIntoView({ block: 'center' });
+      merk.forEach((tr) => {
+        cellerIRad(tr).forEach((c) => {
+          c.style.transition = 'background-color 1.5s';
+          c.style.backgroundColor = '#fff4c2';
+        });
+        setTimeout(() => cellerIRad(tr).forEach((c) => { c.style.backgroundColor = ''; }), 3500);
+      });
     }
   }
-});
+}
+
+// Handlinger fra verktøylinja på malsiden
+async function malsideHandling(melding, tabId) {
+  const { kurs = [] } = await chrome.storage.local.get('kurs');
+  const k = kurs.find(x => x.kursId === melding.kursId);
+  if (!k || !tabId) return { feil: 'Fant ikke faget.' };
+  let res;
+  if (melding.type === 'ledetekst') {
+    const side = await iKanvas(tabId, lesMalside, [k.url]);
+    if (!side || side.feil) res = { feil: side?.feil || 'Kunne ikke lese malsiden.' };
+    else res = await iKanvas(tabId, skrivMalside, [k.url, side.oppdatert, {}, { ledetekst: melding.tekst }]);
+    await visMelding(tabId, res?.ok ? '✓ Ledeteksten er lagret for malsiden.' : '⚠ ' + (res?.feil || 'Lagringen feilet.'),
+      res?.ok ? 'ok' : 'feil', 2500);
+  } else if (melding.type === 'alle') {
+    res = await oppdaterNynorsk(k.kursId, { tabId, melding: true, modus: 'alle', taMedHand: !!melding.taMedHand });
+  } else if (melding.type === 'rad') {
+    res = await oppdaterNynorsk(k.kursId, { tabId, melding: true, rader: [melding.rad] });
+  } else if (melding.type === 'kolonne') {
+    res = await oppdaterNynorsk(k.kursId, { tabId, melding: true });
+  }
+  if (res?.ok) {
+    sistAuto.set(tabId, Date.now());
+    lastMalsidePåNytt(tabId, k, melding.type === 'ledetekst' ? 1200 : 2500,
+      melding.type === 'rad' ? [melding.rad] : 'verktøy');
+  } else if (res?.feil && !res.pågår) {
+    await visVerktøy(tabId, k);  // tegn verktøylinja på nytt så knappene virker igjen
+  }
+  return res;
+}
 
 // ─── HOVEDLØP ────────────────────────────────────────────────────────────────
 
@@ -1259,7 +1522,7 @@ async function settInnMal(nynorsk = false) {
     } else if (nynorsk) {
       const oms = await omsettMedCopilot({
         kursId: aktivtKursId, tittel: info.tittel, mal: malRes.mal,
-        speedgraderTabId: tabId
+        speedgraderTabId: tabId, ledetekst: malRes.ledetekst
       });
       if (oms.feil) return oms;  // meldingen er alt vist
       malHtml = oms.html;

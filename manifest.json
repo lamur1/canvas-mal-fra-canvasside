@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "Canvas – Sett inn mal",
-  "version": "2.2",
-  "version_name": "2.2 – nynorsk via Copilot og malside (lastet opp til GitHub 26.10.2026)",
+  "version": "2.3",
+  "version_name": "2.3 – malsiden som arbeidssted: verktøylinje og ledetekst (lastet opp til GitHub 27.10.2026)",
   "description": "Henter maler fra en malside i Canvas og setter dem inn i SpeedGrader. Støtter flere fag og maler på nynorsk (oversatt med Microsoft 365 Copilot).",
   "permissions": ["activeTab", "scripting", "commands", "storage", "tabs"],
   "host_permissions": ["https://*.instructure.com/*", "https://m365.cloud.microsoft/*"],
